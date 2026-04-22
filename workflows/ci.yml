@@ -1,44 +1,36 @@
-name: CI Pipeline
+name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ "**" ]  # Запускать на ЛЮБОЙ ветке
+  pull_request:
+    branches: [ "**" ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.10"
-        cache: "pip"
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Install deps
+        run: pip install -r requirements.txt
 
-    - name: Create test .env
-      run: |
-        echo "LLM_API_KEY=your_key_here" > .env
-        echo "LLM_API_URL=https://api.openai.com/v1/chat/completions" >> .env
-        echo "LLM_MODEL=gpt-3.5-turbo" >> .env
-        echo "LLM_TEMPERATURE=0.3" >> .env
-        echo "CACHE_TTL=600" >> .env
-        echo "LOG_LEVEL=INFO" >> .env
+      - name: Create .env
+        run: |
+          echo "LLM_API_KEY=your_key_here" > .env
+          echo "LLM_API_URL=https://api.openai.com/v1/chat/completions" >> .env
+          echo "LLM_MODEL=gpt-3.5-turbo" >> .env
+          echo "CACHE_TTL=600" >> .env
 
-    - name: Start server & run tests
-      run: |
-        # Запускаем Flask в фоне
-        python main.py &
-        SERVER_PID=$!
-        sleep 8  # Даём время на инициализацию
-
-        # Проверяем доступность и запускаем тесты
-        curl -f http://localhost:5000/health
-        python test_api.py
-
-        # Останавливаем процесс сервера
-        kill $SERVER_PID 2>/dev/null || true
+      - name: Run tests
+        run: |
+          python main.py &
+          sleep 10
+          curl -f http://localhost:5000/health && python test_api.py
+          pkill -f "python main.py" || true
