@@ -1,0 +1,95 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install flake8 black  # для линтинга
+
+    - name: Lint with flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Check code formatting with black
+      run: |
+        black --check --diff .
+
+    - name: Create .env for CI
+      run: |
+        echo "LLM_API_KEY=your_key_here" > .env
+        echo "LLM_API_URL=https://api.openai.com/v1/chat/completions" >> .env
+        echo "LLM_MODEL=gpt-3.5-turbo" >> .env
+        echo "LLM_TEMPERATURE=0.3" >> .env
+        echo "CACHE_TTL=600" >> .env
+        echo "LOG_LEVEL=INFO" >> .env
+
+    - name: Start server in background
+      run: |
+        python main.py &
+        sleep 5  # даём время на запуск
+        echo "Server PID: $!"
+
+    - name: Run API tests
+      run: |
+        # Проверяем, что сервер отвечает
+        curl -f http://localhost:5000/health || exit 1
+        
+        # Запускаем интеграционные тесты
+        python test_api.py
+        
+        # Проверяем, что все тесты прошли (тест-скрипт должен вернуть 0)
+        if [ $? -ne 0 ]; then
+          echo "❌ Tests failed"
+          exit 1
+        fi
+
+    - name: Show server logs on failure
+      if: failure()
+      run: |
+        echo "=== Service logs ==="
+        cat service.log || echo "No logs found"
+        echo "=== Flask output ==="
+        jobs -l
+        kill %1 2>/dev/null || true
+
+    - name: Cleanup
+      if: always()
+      run: |
+        pkill -f "python main.py" || true
+        rm -f .env service.log
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run safety check for known vulnerabilities
+      run: |
+        pip install safety
+        safety check -r requirements.txt --ignore 70612  # игнорируем уязвимости, если нужно
