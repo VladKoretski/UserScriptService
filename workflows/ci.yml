@@ -40,8 +40,8 @@ jobs:
 
     - name: Create .env for CI
       run: |
-        echo "LLM_API_KEY=your_key_here" > .env
-        echo "LLM_API_URL=https://api.openai.com/v1/chat/completions" >> .env
+        echo "LLM_API_KEY=${{ secrets.LLM_API_KEY }}" > .env
+        echo "LLM_API_URL=${{ secrets.LLM_API_URL }}" >> .env
         echo "LLM_MODEL=gpt-3.5-turbo" >> .env
         echo "LLM_TEMPERATURE=0.3" >> .env
         echo "CACHE_TTL=600" >> .env
