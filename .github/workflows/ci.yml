@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [ "**" ]  # Запускать на ЛЮБОЙ ветке
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Create .env
+        run: |
+          echo "LLM_API_KEY=your_key_here" > .env
+          echo "LLM_API_URL=https://api.openai.com/v1/chat/completions" >> .env
+          echo "LLM_MODEL=gpt-3.5-turbo" >> .env
+          echo "CACHE_TTL=600" >> .env
+
+      - name: Run tests
+        run: |
+          python main.py &
+          sleep 10
+          curl -f http://localhost:5000/health && python test_api.py
+          pkill -f "python main.py" || true
