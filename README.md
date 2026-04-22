@@ -1,4 +1,6 @@
-# LLM Service Pipeline
+# LLM Service Pipeline  
+
+[![CI](https://github.com/VladKoretski/UserScriptService/actions/workflows/ci.yml/badge.svg)](https://github.com/VladKoretski/UserScriptService/actions/workflows/ci.yml)
 
 Минимальный устойчивый сервис для работы с большими языковыми моделями. Реализует валидацию, кеширование, ретраи, fallback и структурированное логирование.
 
