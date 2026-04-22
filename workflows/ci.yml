@@ -93,3 +93,8 @@ jobs:
       run: |
         pip install safety
         safety check -r requirements.txt --ignore 70612  # игнорируем уязвимости, если нужно
+        
+    - name: Run unit tests with pytest
+      run: |
+        pip install pytest
+        pytest tests/ -v --tb=short
